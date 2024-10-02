@@ -1,0 +1,8 @@
+pvporcupine
+google-generativeai
+SpeechRecognition
+firebase-admin
+google-cloud-texttospeech
+opencv-python
+pyaudio
+numpy
