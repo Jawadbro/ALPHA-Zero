@@ -6,3 +6,9 @@ google-cloud-texttospeech
 opencv-python
 pyaudio
 numpy
+torch
+torchvision
+Pillow
+pytesseract
+tqdm
+
