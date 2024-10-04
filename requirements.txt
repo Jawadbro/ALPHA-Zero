@@ -1,14 +1,31 @@
+# File: requirements.txt
+
+# Wake Word Detection
 pvporcupine
-google-generativeai
-SpeechRecognition
-firebase-admin
-google-cloud-texttospeech
-opencv-python
+
+# Audio Processing
 pyaudio
+SpeechRecognition
 numpy
+
+# Image Processing
+opencv-python
+Pillow
+
+# Natural Language Processing
+google-generativeai
+
+# Text-to-Speech
+google-cloud-texttospeech
+
+# Database
+firebase-admin
+
+# Bangla OCR
 torch
 torchvision
-Pillow
+googletrans
 pytesseract
-tqdm
 
+# Additional dependencies
+requests
