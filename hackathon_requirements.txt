@@ -1,0 +1,4 @@
+Title for our proposed idea
+title: Smart vision system for Object Detection
+
+problem solving: Object detection and giving info about the object infront of you 
