@@ -11,4 +11,5 @@ torchvision
 Pillow
 pytesseract
 tqdm
-
+pyttsx3
+pygame
