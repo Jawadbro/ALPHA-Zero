@@ -15,3 +15,9 @@ class DatabaseHandler:
             'timestamp': firestore.SERVER_TIMESTAMP
         })
         print("Interaction saved to Firebase")
+
+    def cleanup(self):
+        """Cleanup resources if needed (currently does nothing)."""
+        # Currently, there's nothing to clean up in Firebase Admin SDK,
+        # but you could add logic here if needed in the future.
+        pass

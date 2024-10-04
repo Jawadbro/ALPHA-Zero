@@ -1,14 +1,25 @@
-import pytesseract
 from PIL import Image
+import pytesseract
+import numpy as np
 
 class VisionHandler:
-    def __init__(self):
-        # No credentials needed for Tesseract OCR
-        pass
+    def detect_text(self, image):
+        """
+        Detect text from an image using Tesseract OCR.
 
-    def detect_text(self, image_path):
-        # Open image using PIL
-        img = Image.open(image_path)
-        # Use pytesseract to do OCR on the image
-        text = pytesseract.image_to_string(img, lang='ben')  # 'ben' for Bangla
+        Args:
+            image (numpy.ndarray): Image in RGB format.
+
+        Returns:
+            str: Detected text.
+        """
+        if not isinstance(image, np.ndarray):
+            raise ValueError("Input must be a numpy array.")
+
+        pil_image = Image.fromarray(image)  # Convert the numpy array to a PIL image
+        text = pytesseract.image_to_string(pil_image, lang='ben')  # Use Bangla language
         return text
+    def cleanup(self):
+        """Perform cleanup if necessary."""
+        pass  # Add any cleanup code if needed
+   

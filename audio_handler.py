@@ -2,22 +2,24 @@ import pyaudio
 import wave
 import numpy as np
 import speech_recognition as sr
-from google.cloud import speech
 
 class AudioHandler:
     def __init__(self, device_index=None):
         self.audio = pyaudio.PyAudio()
         self.device_index = device_index if device_index is not None else self.find_external_microphone()
         self.recognizer = sr.Recognizer()
-        
+
         # Standard audio parameters
         self.sample_rate = 16000
         self.channels = 1
-        self.chunk = 1024
+        self.chunk = 512  # Changed to match Porcupine's expected frame length
         self.format = pyaudio.paInt16
 
+        # Print device info for debugging
+        self.print_device_info()
+
     def find_external_microphone(self):
-        """Find external microphone if available"""
+        """Find external microphone if available."""
         for i in range(self.audio.get_device_count()):
             device_info = self.audio.get_device_info_by_index(i)
             if device_info['maxInputChannels'] > 0:
@@ -25,8 +27,15 @@ class AudioHandler:
                     return i
         return None
 
+    def print_device_info(self):
+        """Print audio device info."""
+        print("Available audio devices:")
+        for i in range(self.audio.get_device_count()):
+            device_info = self.audio.get_device_info_by_index(i)
+            print(f"Device {i}: {device_info['name']}, Max Channels: {device_info['maxInputChannels']}")
+
     def record_audio(self, duration=5):
-        """Record audio for specified duration"""
+        """Record audio for a specified duration and return a buffer of frames."""
         stream = self.audio.open(
             format=self.format,
             channels=self.channels,
@@ -44,11 +53,15 @@ class AudioHandler:
 
         stream.stop_stream()
         stream.close()
+
+        # Check the length of the recorded audio
+        audio_data = b''.join(frames)
+        print(f"Recorded audio length: {len(audio_data)} bytes")
         
-        return b''.join(frames)
+        return audio_data
 
     def save_audio(self, audio_data, filename):
-        """Save audio data to WAV file"""
+        """Save audio data to WAV file."""
         with wave.open(filename, 'wb') as wf:
             wf.setnchannels(self.channels)
             wf.setsampwidth(self.audio.get_sample_size(self.format))
@@ -56,7 +69,7 @@ class AudioHandler:
             wf.writeframes(audio_data)
 
     def transcribe_audio(self, audio_data=None, language_code="bn-IN"):
-        """Transcribe audio to text using Google Speech-to-Text"""
+        """Transcribe audio to text using Google Speech-to-Text."""
         if audio_data is None:
             audio_data = self.record_audio()
 
@@ -78,5 +91,5 @@ class AudioHandler:
                 return ""
 
     def cleanup(self):
-        """Cleanup resources"""
+        """Cleanup resources."""
         self.audio.terminate()
