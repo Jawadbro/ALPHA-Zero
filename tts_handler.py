@@ -18,7 +18,7 @@ class TTSHandler:
         voices = self.engine.getProperty('voices')
         # Try to find a suitable voice for Bangla/Bengali
         # Note: pyttsx3 might not have direct Bangla support, so we'll use the default voice
-        self.engine.setProperty('voice', voices[0].id)
+        self.engine.setProperty('voice', voices[1].id)
 
     def set_voice_properties(self, rate=None, volume=None, voice_id=None):
         """
