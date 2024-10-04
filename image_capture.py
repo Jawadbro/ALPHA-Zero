@@ -30,9 +30,6 @@ def capture_frames_every_n_seconds(video_source=0, interval=2):
             cv2.imwrite(image_filename, frame)
             print(f"Saved: {image_filename}")
 
-        # Display the resulting frame (optional)
-        cv2.imshow('Video', frame)
-
         # Break the loop on 'q' key press
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -40,6 +37,3 @@ def capture_frames_every_n_seconds(video_source=0, interval=2):
     # Release the capture and close windows
     cap.release()
     cv2.destroyAllWindows()
-
-# Call the function to start capturing frames
-capture_frames_every_n_seconds()

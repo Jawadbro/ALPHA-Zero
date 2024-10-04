@@ -23,7 +23,7 @@ for _ in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
     data = stream.read(CHUNK)  # Read audio data from the input stream
     frames.append(data)  # Add the data to the frames list
 
-print("Finished recording.")
+print("Fniished recording.")
 
 stream.stop_stream()
 stream.close()
