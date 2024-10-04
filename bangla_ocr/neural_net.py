@@ -39,8 +39,8 @@ def load_dataset(dataset_path, is_ekush=True):
     return torch.tensor(images, dtype=torch.float32).unsqueeze(1), torch.tensor(labels, dtype=torch.long)
 
 # Load datasets
-ekush_images, ekush_labels = load_dataset('path/to/ekush_dataset', is_ekush=True)  # Load Ekush dataset
-bangla_lekha_images, bangla_lekha_labels = load_dataset('path/to/bangla_lekha_dataset', is_ekush=False)  # Load Bangla Lekha dataset
+ekush_images, ekush_labels = load_dataset(r'C:\project\ALPHA-Zero\bangla_ocr\ekush\dataset\dataset', is_ekush=True) # Load Ekush dataset
+bangla_lekha_images, bangla_lekha_labels = load_dataset('C:\project\ALPHA-Zero\bangla_ocr\bangla_lekha', is_ekush=False)  # Load Bangla Lekha dataset
 
 # Combine datasets
 combined_images = torch.cat((ekush_images, bangla_lekha_images), 0)  # Concatenate image tensors
@@ -262,5 +262,5 @@ def detect_and_recognize_bangla(image_path, model, device):
 model.load_state_dict(torch.load('best_bangla_ocr_model.pth'))  # Load the best model
 model.eval()  # Set model to evaluation mode
 
-result = detect_and_recognize_bangla("example_image.jpg", model, device)  # Perform OCR and classification
+result = detect_and_recognize_bangla("C:\project\ALPHA-Zero\bangla_ocr\pngtree-abar-dekha-hobe-bangla-text-png-image_225469.jpg", model, device)  # Perform OCR and classification
 print(result)  # Print the results
