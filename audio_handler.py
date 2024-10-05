@@ -2,22 +2,41 @@ import pyaudio
 import wave
 import numpy as np
 import speech_recognition as sr
-import os
-
+from typing import Optional, Union
+import logging
 
 class AudioHandler:
-    def __init__(self, device_index=None):
+    def __init__(self, device_index: Optional[int] = None, 
+                 sample_rate: int = 44100, 
+                 channels: int = 1, 
+                 chunk_size: int = 1024):
+        """
+        Initialize the AudioHandler.
+        
+        Args:
+            device_index: Specific microphone device index. If None, will try to find external mic
+            sample_rate: Audio sample rate in Hz
+            channels: Number of audio channels (1 for mono, 2 for stereo)
+            chunk_size: Size of audio chunks to process at a time
+        """
+        # Set up logging first
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        
+        # Initialize PyAudio
         self.audio = pyaudio.PyAudio()
         self.device_index = device_index if device_index is not None else self.find_external_microphone()
-        self.recognizer = sr.Recognizer()
-
-        # Updated audio parameters for better speech recognition
-        self.sample_rate = 44100  # Standard sample rate for better quality
-        self.channels = 1
-        self.chunk = 1024  # Increased chunk size for better processing
+        
+        # Audio parameters
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.chunk = chunk_size
         self.format = pyaudio.paInt16
-
-        # Initialize microphone using speech_recognition
+        
+        # Initialize speech recognizer
+        self.recognizer = sr.Recognizer()
+        
+        # Initialize microphone
         try:
             self.microphone = sr.Microphone(
                 device_index=self.device_index,
@@ -25,121 +44,221 @@ class AudioHandler:
             )
             # Adjust for ambient noise
             with self.microphone as source:
-                print("Adjusting for ambient noise...")
+                self.logger.info("Adjusting for ambient noise...")
                 self.recognizer.adjust_for_ambient_noise(source, duration=2)
+                self.logger.info("Ambient noise adjustment complete")
         except Exception as e:
-            print(f"Error initializing microphone: {e}")
+            self.logger.error(f"Error initializing microphone: {e}")
             self.microphone = None
 
-        # Print device info for debugging
-        self.print_device_info()
+    def find_external_microphone(self) -> Optional[int]:
+        """
+        Find external microphone if available.
+        
+        Returns:
+            Optional[int]: Device index of external microphone if found, None otherwise
+        """
+        try:
+            for i in range(self.audio.get_device_count()):
+                device_info = self.audio.get_device_info_by_index(i)
+                if device_info['maxInputChannels'] > 0:
+                    if 'USB' in device_info['name'] or 'External' in device_info['name']:
+                        self.logger.info(f"Found external microphone: {device_info['name']}")
+                        return i
+            
+            # If no external mic found, use default
+            self.logger.warning("No external microphone found, using default device")
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error finding external microphone: {e}")
+            return None
 
-    def find_external_microphone(self):
-        """Find external microphone if available."""
-        for i in range(self.audio.get_device_count()):
-            device_info = self.audio.get_device_info_by_index(i)
-            if device_info['maxInputChannels'] > 0:
-                if 'USB' in device_info['name'] or 'External' in device_info['name']:
-                    return i
-        return None
-
-    def print_device_info(self):
-        """Print audio device info."""
-        print("\nAvailable audio devices:")
-        for i in range(self.audio.get_device_count()):
-            device_info = self.audio.get_device_info_by_index(i)
-            print(f"Device {i}: {device_info['name']}")
-            print(f"  Max Input Channels: {device_info['maxInputChannels']}")
-            print(f"  Default Sample Rate: {device_info['defaultSampleRate']}")
-
-    def listen_for_wake_word(self, timeout=1, phrase_time_limit=3):
-        """Listen for audio and return the audio data."""
+    def listen_for_wake_word(self, timeout: int = 5) -> Optional[sr.AudioData]:
+        """
+        Listen for audio and return the audio data.
+        
+        Args:
+            timeout: Maximum number of seconds to wait for audio
+        
+        Returns:
+            Optional[sr.AudioData]: The captured audio data if successful, None otherwise
+        """
         if not self.microphone:
-            print("Error: Microphone not initialized")
+            self.logger.error("Error: Microphone not initialized")
             return None
 
         try:
             with self.microphone as source:
-                print("Listening...")
-                audio = self.recognizer.listen(
-                    source,
-                    timeout=timeout,
-                    phrase_time_limit=phrase_time_limit
-                )
+                self.logger.info("Listening for wake word...")
+                audio = self.recognizer.listen(source, timeout=timeout)
                 return audio
         except sr.WaitTimeoutError:
+            self.logger.info("No audio detected within the timeout period")
             return None
         except Exception as e:
-            print(f"Error while listening: {e}")
+            self.logger.error(f"Error while listening for audio: {e}")
             return None
 
-    def record_audio(self, duration=5):
-        """Record audio for a specified duration."""
-        print(f"Recording for {duration} seconds...")
+    def listen_for_speech(self, timeout: int = 5, 
+                         phrase_time_limit: Optional[int] = None) -> Optional[sr.AudioData]:
+        """
+        Listen for speech input and return the audio data.
         
-        frames = []
-        stream = self.audio.open(
-            format=self.format,
-            channels=self.channels,
-            rate=self.sample_rate,
-            input=True,
-            input_device_index=self.device_index,
-            frames_per_buffer=self.chunk
-        )
+        Args:
+            timeout: Maximum number of seconds to wait for speech
+            phrase_time_limit: Maximum number of seconds for a phrase
+        
+        Returns:
+            Optional[sr.AudioData]: The captured audio data if successful, None otherwise
+        """
+        if not self.microphone:
+            self.logger.error("Error: Microphone not initialized")
+            return None
 
         try:
+            with self.microphone as source:
+                self.logger.info("Listening for speech...")
+                audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_time_limit)
+                return audio
+        except sr.WaitTimeoutError:
+            self.logger.info("No speech detected within the timeout period")
+            return None
+        except Exception as e:
+            self.logger.error(f"Error while listening for speech: {e}")
+            return None
+
+    def transcribe_audio(self, audio_data: sr.AudioData, 
+                        language_code: str = "en-US") -> str:
+        """
+        Transcribe audio to text.
+        
+        Args:
+            audio_data: The audio data to transcribe
+            language_code: The language code for transcription
+        
+        Returns:
+            str: The transcribed text, or empty string if transcription fails
+        """
+        try:
+            text = self.recognizer.recognize_google(audio_data, language=language_code)
+            self.logger.info(f"Transcribed text: {text}")
+            return text
+        except sr.UnknownValueError:
+            self.logger.warning("Speech recognition could not understand the audio")
+            return ""
+        except sr.RequestError as e:
+            self.logger.error(f"Could not request results from speech recognition service: {e}")
+            return ""
+        except Exception as e:
+            self.logger.error(f"Unexpected error during transcription: {e}")
+            return ""
+
+    def record_audio(self, duration: int = 5, 
+                    output_filename: str = "recorded_audio.wav") -> bool:
+        """
+        Record audio for a specified duration and save to file.
+        
+        Args:
+            duration: Recording duration in seconds
+            output_filename: Output wav file name
+        
+        Returns:
+            bool: True if recording successful, False otherwise
+        """
+        try:
+            stream = self.audio.open(
+                format=self.format,
+                channels=self.channels,
+                rate=self.sample_rate,
+                input=True,
+                input_device_index=self.device_index,
+                frames_per_buffer=self.chunk
+            )
+
+            self.logger.info(f"Recording {duration} seconds of audio...")
+            frames = []
+            
             for _ in range(0, int(self.sample_rate / self.chunk * duration)):
-                data = stream.read(self.chunk, exception_on_overflow=False)
+                data = stream.read(self.chunk)
                 frames.append(data)
 
-            audio_data = b''.join(frames)
-            print(f"Recording completed: {len(audio_data)} bytes")
-            return audio_data
-
-        finally:
+            self.logger.info("Recording complete")
+            
             stream.stop_stream()
             stream.close()
 
-    def save_audio(self, audio_data, filename="recorded_audio.wav"):
-        """Save audio data to WAV file."""
-        with wave.open(filename, 'wb') as wf:
-            wf.setnchannels(self.channels)
-            wf.setsampwidth(self.audio.get_sample_size(self.format))
-            wf.setframerate(self.sample_rate)
-            wf.writeframes(audio_data)
-        print(f"Audio saved to {filename}")
-
-    def transcribe_audio(self, audio_data=None, language_code="bn-IN"):
-        """Transcribe audio to text using Google Speech-to-Text."""
-        try:
-            if isinstance(audio_data, sr.AudioData):
-                # If audio_data is already an AudioData object
-                return self.recognizer.recognize_google(audio_data, language=language_code)
+            # Save the recorded audio to wav file
+            with wave.open(output_filename, 'wb') as wf:
+                wf.setnchannels(self.channels)
+                wf.setsampwidth(self.audio.get_sample_size(self.format))
+                wf.setframerate(self.sample_rate)
+                wf.writeframes(b''.join(frames))
             
-            if audio_data is None:
-                audio_data = self.record_audio()
+            self.logger.info(f"Audio saved to {output_filename}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error during audio recording: {e}")
+            return False
 
-            # Save temporary WAV file
-            temp_filename = "temp_audio.wav"
-            self.save_audio(audio_data, temp_filename)
+    def play_audio(self, filename: str) -> bool:
+        """
+        Play audio from a wav file.
+        
+        Args:
+            filename: Path to the wav file to play
+        
+        Returns:
+            bool: True if playback successful, False otherwise
+        """
+        try:
+            # Open the wave file
+            with wave.open(filename, 'rb') as wf:
+                # Open a stream
+                stream = self.audio.open(
+                    format=self.audio.get_format_from_width(wf.getsampwidth()),
+                    channels=wf.getnchannels(),
+                    rate=wf.getframerate(),
+                    output=True
+                )
 
-            # Use speech recognition
-            with sr.AudioFile(temp_filename) as source:
-                audio = self.recognizer.record(source)
-                text = self.recognizer.recognize_google(audio, language=language_code)
-                return text
+                # Read data in chunks and play
+                data = wf.readframes(self.chunk)
+                while data:
+                    stream.write(data)
+                    data = wf.readframes(self.chunk)
 
-        except sr.UnknownValueError:
-            print("Could not understand audio")
-            return ""
-        except sr.RequestError as e:
-            print(f"Could not request results; {e}")
-            return ""
-        finally:
-            # Clean up temporary file
-            if os.path.exists("temp_audio.wav"):
-                os.remove("temp_audio.wav")
+                # Cleanup
+                stream.stop_stream()
+                stream.close()
+                
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error playing audio file: {e}")
+            return False
+
+    def get_audio_devices(self) -> list:
+        """
+        Get list of available audio devices.
+        
+        Returns:
+            list: List of dictionaries containing device information
+        """
+        devices = []
+        try:
+            for i in range(self.audio.get_device_count()):
+                devices.append(self.audio.get_device_info_by_index(i))
+            return devices
+        except Exception as e:
+            self.logger.error(f"Error getting audio devices: {e}")
+            return []
 
     def cleanup(self):
-        """Cleanup resources."""
-        self.audio.terminate()
+        """Clean up resources."""
+        try:
+            self.audio.terminate()
+            self.logger.info("Audio resources cleaned up successfully")
+        except Exception as e:
+            self.logger.error(f"Error during cleanup: {e}")
