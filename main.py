@@ -13,7 +13,6 @@ from config import (FIREBASE_CREDENTIALS, GEMINI_API_KEY,
                    SYSTEM_PROMPT)
 
 def initialize_logging():
-    """Initialize logging configuration."""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -52,21 +51,20 @@ def print_separator():
     print("\n" + "="*50 + "\n")
 
 def handle_questions(audio_handler, nlp_handler, tts_handler, context):
-    """Handle interactive Q&A session about detected text/objects."""
     print("You can now ask questions about the detected text or objects. Say 'exit' to stop.")
     
     while True:
         question_audio = audio_handler.listen_for_speech(timeout=5)
         if question_audio:
             question = audio_handler.transcribe_audio(question_audio)
-            if not question:  # If transcription failed
+            if not question:
                 tts_handler.text_to_speech("I couldn't understand that. Could you please repeat?")
                 continue
                 
             if question.lower() == "exit":
                 break
                 
-            answer = nlp_handler.answer_question(question, context=context)
+            answer = nlp_handler.answer_question(question, context)
             print(f"Q: {question}")
             print(f"A: {answer}")
             tts_handler.text_to_speech(answer)
@@ -77,7 +75,7 @@ def main():
     logger.info("Initializing ALPHA Zero System...")
     print_separator()
     
-    handlers = {}  # Initialize handlers dictionary
+    handlers = {}
     
     try:
         # Initialize all handlers
@@ -121,17 +119,29 @@ def main():
                         
                         # Text Detection and Processing
                         logger.info("\n2. Detecting and processing text...")
-                        detected_text = handlers["Vision Handler"].detect_text(image)
+                        text_data = handlers["Vision Handler"].detect_and_process_text(image)
                         
-                        if detected_text:
-                            logger.info(f"✓ Detected text: {detected_text}")
-                            translated_text, summary_text = handlers["NLP Handler"].translate_and_summarize(detected_text)
-                            logger.info(f"✓ Translated text: {translated_text}")
-                            logger.info(f"✓ Summary: {summary_text}")
+                        if text_data["original_text"]:
+                            logger.info(f"✓ Detected text: {text_data['original_text']}")
+                            
+                            if text_data["is_bangla"] and text_data["translated_text"]:
+                                logger.info(f"✓ Translated text: {text_data['translated_text']}")
+                            
+                            # Get summary from NLP handler
+                            text_to_process = (text_data["translated_text"] 
+                                             if text_data["is_bangla"] and text_data["translated_text"]
+                                             else text_data["original_text"])
+                            
+                            _, summary = handlers["NLP Handler"].translate_and_summarize(text_to_process)
+                            logger.info(f"✓ Summary: {summary}")
                             
                             # Save to database and provide audio feedback
-                            handlers["Database Handler"].save_interaction("text_detection", detected_text, summary_text)
-                            handlers["TTS Handler"].text_to_speech(summary_text)
+                            handlers["Database Handler"].save_interaction(
+                                "text_detection",
+                                text_data["original_text"],
+                                f"Translation: {text_data['translated_text']}\nSummary: {summary}"
+                            )
+                            handlers["TTS Handler"].text_to_speech(summary)
                         else:
                             logger.warning("⚠ No text detected in the image")
                         
@@ -141,35 +151,50 @@ def main():
                         
                         if detected_objects:
                             object_description = handlers["NLP Handler"].describe_objects(detected_objects)
-                            logger.info(f"✓ Detected objects: {object_description}")
+                            logger.info(f"✓ Object description: {object_description}")
                             
                             # Save to database and provide audio feedback
-                            handlers["Database Handler"].save_interaction("object_detection", 
-                                                      str(detected_objects), 
-                                                      object_description)
+                            handlers["Database Handler"].save_interaction(
+                                "object_detection",
+                                str(detected_objects),
+                                object_description
+                            )
                             handlers["TTS Handler"].text_to_speech(object_description)
                         else:
                             logger.warning("⚠ No objects detected in the image")
                         
                         # Question Answering Session
-                        if detected_text or detected_objects:
-                            context = f"Text: {detected_text}\nObjects: {str(detected_objects)}"
-                            handle_questions(handlers["Audio Handler"], handlers["NLP Handler"], handlers["TTS Handler"], context)
+                        if text_data["original_text"] or detected_objects:
+                            context = (
+                                f"Detected Text: {text_data['original_text']}\n"
+                                f"Translated Text: {text_data['translated_text'] if text_data['is_bangla'] else 'N/A'}\n"
+                                f"Objects: {str(detected_objects) if detected_objects else 'No objects detected'}"
+                            )
+                            handle_questions(
+                                handlers["Audio Handler"],
+                                handlers["NLP Handler"],
+                                handlers["TTS Handler"],
+                                context
+                            )
                         
                     except Exception as e:
                         logger.error(f"\n❌ Error during processing: {e}")
                         import traceback
                         logger.error(traceback.format_exc())
-                        handlers["TTS Handler"].text_to_speech("Sorry, I encountered an error while processing. Please try again.")
+                        handlers["TTS Handler"].text_to_speech(
+                            "Sorry, I encountered an error while processing. Please try again."
+                        )
                 else:
                     logger.error("\n❌ Failed to capture image")
-                    handlers["TTS Handler"].text_to_speech("Sorry, I couldn't capture an image. Please check the camera connection.")
+                    handlers["TTS Handler"].text_to_speech(
+                        "Sorry, I couldn't capture an image. Please check the camera connection."
+                    )
                 
                 print_separator()
                 logger.info("Resuming wake word detection...")
                 print_separator()
         
-            time.sleep(0.1)  # Small delay to prevent high CPU usage
+            time.sleep(0.1)
 
     except KeyboardInterrupt:
         print_separator()

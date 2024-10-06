@@ -1,71 +1,184 @@
-from PIL import Image
-import pytesseract
+from typing import Dict, List, Optional, Tuple
+import logging
 import numpy as np
 import cv2
+from PIL import Image
+import pytesseract
 from ultralytics import YOLO
+from googletrans import Translator
 
 class VisionHandler:
     def __init__(self):
-        # Initialize the YOLO model (you can specify different versions or custom weights)
-        self.model = YOLO('yolov8s.pt')  # You can use 'yolov8s.pt' for a larger model
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("Initializing VisionHandler...")
+        
+        # Initialize YOLO
+        try:
+            self.logger.info("Loading YOLO model...")
+            self.model = YOLO('yolov8s.pt')
+            self.logger.info("YOLO model loaded successfully.")
+        except Exception as e:
+            self.logger.error(f"Error loading YOLO model: {e}")
+            self.model = None
+        
+        # Initialize translator
+        try:
+            self.translator = Translator()
+            self.logger.info("Translator initialized successfully.")
+        except Exception as e:
+            self.logger.error(f"Error initializing translator: {e}")
+            self.translator = None
 
-    def detect_text(self, image):
+    def detect_and_process_text(self, image: np.ndarray) -> Dict[str, str]:
         """
-        Detect text from an image using Tesseract OCR.
+        Detects text in both English and Bangla and processes it accordingly.
         
         Args:
-            image (numpy.ndarray): Image in RGB format.
-        
+            image (np.ndarray): Input image
+            
         Returns:
-            str: Detected text.
+            Dict[str, str]: Dictionary containing original text, translated text (if applicable),
+                           and a flag indicating if the text is in Bangla
         """
+        self.logger.info("Starting text detection and processing...")
+        
         if not isinstance(image, np.ndarray):
             raise ValueError("Input must be a numpy array.")
         
-        pil_image = Image.fromarray(image)
-        text = pytesseract.image_to_string(pil_image, lang='ben+eng')  # Use Bangla and English languages
-        return text
+        try:
+            # Convert numpy array to PIL Image
+            pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            
+            # Detect text in both English and Bangla
+            text = pytesseract.image_to_string(pil_image, lang='ben+eng')
+            
+            if not text.strip():
+                return {
+                    "original_text": "",
+                    "translated_text": "",
+                    "is_bangla": False
+                }
+            
+            # Check if text contains Bangla characters
+            is_bangla = any(ord(char) >= 0x0980 and ord(char) <= 0x09FF for char in text)
+            
+            if is_bangla and self.translator:
+                try:
+                    translated = self.translator.translate(text, src='bn', dest='en')
+                    translated_text = translated.text
+                    self.logger.info(f"Translation successful: {translated_text}")
+                    return {
+                        "original_text": text,
+                        "translated_text": translated_text,
+                        "is_bangla": True
+                    }
+                except Exception as e:
+                    self.logger.error(f"Translation error: {e}")
+                    return {
+                        "original_text": text,
+                        "translated_text": "",
+                        "is_bangla": True
+                    }
+            else:
+                return {
+                    "original_text": text,
+                    "translated_text": "",
+                    "is_bangla": False
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Error in text detection: {e}")
+            return {
+                "original_text": "",
+                "translated_text": "",
+                "is_bangla": False
+            }
 
-    def detect_objects(self, image):
+    def detect_objects(self, image: np.ndarray) -> List[Dict]:
         """
-        Detect objects in an image using YOLO or fallback on contour-based detection (placeholder).
+        Detects objects in the image using YOLO or falls back to contour detection.
         
         Args:
-            image (numpy.ndarray): Image in RGB format.
-        
+            image (np.ndarray): Input image
+            
         Returns:
-            list: Detected objects with their bounding boxes and labels.
+            List[Dict]: List of detected objects with their properties
         """
-        # YOLO object detection
+        self.logger.info("Starting object detection...")
+        
+        if not isinstance(image, np.ndarray):
+            raise ValueError("Input must be a numpy array.")
+        
+        if self.model is None:
+            self.logger.warning("YOLO model not available. Falling back to contour-based detection.")
+            return self._contour_based_detection(image)
+        
         try:
-            results = self.model(image)  # Run YOLO object detection
+            # Run YOLO detection with a lower confidence threshold
+            results = self.model(image, conf=0.25)
+            
             detected_objects = []
-            for result in results.xyxy[0]:  # Extract bounding boxes, confidence, and class
-                x1, y1, x2, y2, conf, cls = result
-                detected_objects.append({
-                    'bbox': (int(x1), int(y1), int(x2), int(y2)),
-                    'label': self.model.names[int(cls)],  # Get class label
-                    'confidence': float(conf)
-                })
+            for result in results:
+                for box in result.boxes:
+                    x1, y1, x2, y2 = box.xyxy[0]
+                    conf = box.conf[0]
+                    cls = int(box.cls[0])
+                    
+                    obj = {
+                        'bbox': (int(x1), int(y1), int(x2), int(y2)),
+                        'label': self.model.names[cls],
+                        'confidence': float(conf)
+                    }
+                    detected_objects.append(obj)
+                    self.logger.info(f"Detected object: {obj}")
+            
             return detected_objects
-
+            
         except Exception as e:
-            print(f"YOLO detection failed: {e}")
-            # Fallback to basic contour-based detection as a placeholder
-            gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-            _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            self.logger.error(f"YOLO detection failed: {e}")
+            return self._contour_based_detection(image)
+
+    def _contour_based_detection(self, image: np.ndarray) -> List[Dict]:
+        """
+        Fallback method using contour detection.
+        
+        Args:
+            image (np.ndarray): Input image
+            
+        Returns:
+            List[Dict]: List of detected objects with their properties
+        """
+        self.logger.info("Performing contour-based detection...")
+        
+        try:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+            _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
             objects = []
             for contour in contours:
                 area = cv2.contourArea(contour)
-                if area > 1000:
+                if area > 1000:  # Minimum area threshold
                     x, y, w, h = cv2.boundingRect(contour)
-                    objects.append({
-                        'bbox': (x, y, w, h),
-                        'label': 'Unknown Object'  # Placeholder classification
-                    })
+                    obj = {
+                        'bbox': (x, y, x + w, y + h),
+                        'label': 'Unknown Object',
+                        'confidence': None
+                    }
+                    objects.append(obj)
+                    
             return objects
+            
+        except Exception as e:
+            self.logger.error(f"Error in contour-based detection: {e}")
+            return []
 
     def cleanup(self):
-        """Perform cleanup if necessary."""
-        pass  # Add any cleanup code if needed
+        """Cleanup resources"""
+        self.logger.info("Cleaning up VisionHandler...")
+        if self.translator:
+            del self.translator
+        if self.model:
+            del self.model
