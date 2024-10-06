@@ -11,8 +11,7 @@
 
 ## Project Overview
 
-This project implements an **Object Detection Model** using a camera to detect objects in real-time. The camera captures an image at a regular interval, which is then sent to an AI model that identifies what the object is and provides the output text. 
-This can be used in a variety of real-world applications, such as surveillance systems, smart devices and medical applications.
+This project implements an **Object Detection Model** using a camera/webcam to detect objects in real-time. The camera captures images, which is then sent to an AI model that identifies what the object is and provides a response to it. The response is converted to speech in Bangla(Bangladesh) Language. This can be used in a variety of real-world applications, such as surveillance systems, smart devices and medical applications.
 
 ## How It Works
 
@@ -34,7 +33,7 @@ Before running the project, ensure you have the following dependencies installed
 
 - Python 3.9.x or higher
 - OpenCV
-- TensorFlow or PyTorch (based on the model)
+- PyTorch (based on the model you can use TensorFlow too, we used torch)
 - Firebase (optional, for storing image metadata)
 - And others included in the `requirements.txt` file
 
@@ -44,21 +43,32 @@ Before running the project, ensure you have the following dependencies installed
 Follow these steps to set up the project in your local machine
 
 ### **1. Clone the repository**
-
 ```cmd
-git clone https://github.com/Jawadbro/ALPHA-Zero
+git clone https://github.com/Jawadbro/ALPHA-Zero.git
 cd AlPHA-Zero
 ```
-
 ### **2. Create a virtual Environment(Optional but not required)**
-
 ```cmd
-python -m venv .venv
-.\.venv\Scripts\activate
+python -m venv venv_folder_name
+venv_folder_name\Scripts\activate
 ```
-
 ### **3. Install dependencies**
 
 ```cmd
 pip install -r requirements.txt
 ```
+
+## Running the model
+To run the model enter the following to your console
+```cmd
+python main.py
+```
+
+## Usage
+The usage of our proposed solution not only spans in medical but also in surveillance. This AI solution can be used to detect objects in real time and get speech recognition of the seen object. This can be helpful for visually impaired people, surveillance systems, smart devcies, medical applications and also shows talent in defence systems if used for that purpose.
+
+## Contributing
+Following are the people who contributed to the project:
+- [Jawadbro](https://github.com/Jawadbro)
+- [rafibuilds](https://github.com/rafibuilds)
+- [TahmidAqib](https://github.com/TahmidAqib)
