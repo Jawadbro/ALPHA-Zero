@@ -66,9 +66,3 @@ python main.py
 
 ## Usage
 The usage of our proposed solution not only spans in medical but also in surveillance. This AI solution can be used to detect objects in real time and get speech recognition of the seen object. This can be helpful for visually impaired people, surveillance systems, smart devcies, medical applications and also shows talent in defence systems if used for that purpose.
-
-## Contributing
-Following are the people who contributed to the project:
-- [Jawadbro](https://github.com/Jawadbro)
-- [rafibuilds](https://github.com/rafibuilds)
-- [TahmidAqib](https://github.com/TahmidAqib)
