@@ -1,68 +1,32 @@
-# Real-Life Object Detection Model with AI
+# ALPHA-Zero: Multimodal Virtual Assistant
 
-## Table of Contents
-- [Project Overview](#project-overview)
-- [How It Works](#how-it-works)
-- [Prerequisites](#prerequisites)
-- [Setup Instructions](#setup-instructions)
-- [Running the Model](#running-the-model)
-- [Usage](#usage)
-- [Contributing](#contributing)
+## Overview
+ALPHA-Zero is a real-time, multimodal virtual assistant that "sees and talks." It captures visual inputs via camera, detects objects using deep learning, and generates Bangla speech descriptions—designed for accessibility (e.g., visually impaired support) or surveillance. Developed by Jawadul Karim, this project leverages computer vision and AI inference, inspired by my passion for accessible tech (e.g., Pose-to-Text research).
 
-## Project Overview
+## Features
+- **Real-Time Object Detection**: Identifies objects (e.g., "chair" with 0.95 confidence) from live camera feeds.
+- **Bangla Speech Output**: Converts detections into spoken descriptions using gTTS for accessibility.
+- **Basic Memory**: Logs metadata via Firebase for interaction recall (e.g., past detections).
+- **Lightweight Pipeline**: Runs on standard hardware with minimal setup.
 
-This project implements an **Object Detection Model** using a camera/webcam to detect objects in real-time. The camera captures images, which is then sent to an AI model that identifies what the object is and provides a response to it. The response is converted to speech in Bangla(Bangladesh) Language. This can be used in a variety of real-world applications, such as surveillance systems, smart devices and medical applications.
+## Tech Stack
+- **Python 3.9+**: Core language for the end-to-end workflow.
+- **OpenCV**: Captures and processes real-time video frames.
+- **PyTorch**: Powers pre-trained object detection models for inference.
+- **gTTS**: Synthesizes Bangla speech from detection outputs.
+- **Firebase**: Optional persistence for metadata logging.
+- **Dependencies**: numpy, pillow, pyaudio (inferred from requirements.txt).
 
-## How It Works
+## Installation
+1. Clone the repo: `git clone https://github.com/Jawadbro/ALPHA-Zero.git`
+2. Create a virtual environment: `python -m venv venv`
+3. Activate it: `source venv/bin/activate` (Linux/Mac) or `venv\Scripts\activate` (Windows)
+4. Install dependencies: `pip install -r requirements.txt`
+5. Run the assistant: `python main.py`
 
-1. **Capture Image:**
-   A camera connected to the system captures frames at specific intervals.
-
-2. **Send to AI Model:**
-   The captured image is processed and sent to a pre-trained object detection model for analysis.
-
-3. **Model Prediction:**
-   The AI model processes the image and returns predictions, identifying the object along with a confidence score.
-
-4. **Output:**
-   The system displays or logs the object detected, providing insights for further actions.
-
-## Prerequisites
-
-Before running the project, ensure you have the following dependencies installed:
-
-- Python 3.9.x or higher
-- OpenCV
-- PyTorch (based on the model you can use TensorFlow too, we used torch)
-- Firebase (optional, for storing image metadata)
-- And others included in the `requirements.txt` file
+## Future Work
+- Add speech input for two-way interaction (e.g., using Whisper).
+- Enhance memory with a vector DB (e.g., Pinecone) for multi-turn context.
 
 
-## Setup instructions
 
-Follow these steps to set up the project in your local machine
-
-### **1. Clone the repository**
-```cmd
-git clone https://github.com/Jawadbro/ALPHA-Zero.git
-cd AlPHA-Zero
-```
-### **2. Create a virtual Environment(Optional but not required)**
-```cmd
-python -m venv venv_folder_name
-venv_folder_name\Scripts\activate
-```
-### **3. Install dependencies**
-
-```cmd
-pip install -r requirements.txt
-```
-
-## Running the model
-To run the model enter the following to your console
-```cmd
-python main.py
-```
-
-## Usage
-The usage of our proposed solution not only spans in medical but also in surveillance. This AI solution can be used to detect objects in real time and get speech recognition of the seen object. This can be helpful for visually impaired people, surveillance systems, smart devcies, medical applications and also shows talent in defence systems if used for that purpose.
